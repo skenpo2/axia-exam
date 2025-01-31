@@ -81,7 +81,6 @@ const loginUser = async (req, res) => {
 
 // function to delete a registered user
 const deleteUser = async (req, res) => {
-  // checking if the user exists in the database
   try {
     // cookie access to access the logged user ID
     const { id: userId } = req.cookies;
@@ -94,13 +93,14 @@ const deleteUser = async (req, res) => {
     }
 
     // find and delete the registered user details from the database
-    await userModel.findByIdAndDelete({ userId });
+    await userModel.findByIdAndDelete(userId);
     return res.status(200).json({ message: 'User Deleted Successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
+// function to update a registered user's details
 const updateAUser = async (req, res) => {
   try {
     // cookie access to access the logged user ID
@@ -108,22 +108,34 @@ const updateAUser = async (req, res) => {
 
     const user = await userModel.findById(userId);
 
-    // check if the user still exist
+    // check if the user still exists
     if (!user) {
       return res.status(404).json({ message: 'User does not exist' });
     }
 
     // get the updated fields
-    const { ...userData } = req.body;
+    const { userName, email, password } = req.body;
 
-    const updatedData = await Post.findByIdAndUpdate(
-      id,
-      { ...userData },
-      { new: true }
-    );
-    res.status(200).json({ message: 'Details updated successfully' });
+    // if password is provided, hash it before saving
+    let updatedData = { userName, email };
+    if (password) {
+      const salt = bcrypt.genSaltSync(10);
+      const hashedPassword = bcrypt.hashSync(password, salt);
+      updatedData.password = hashedPassword;
+    }
+
+    // update the user data
+    const updatedUser = await userModel.findByIdAndUpdate(userId, updatedData, {
+      new: true,
+    });
+
+    // returning the updated user details without the password
+    updatedUser.password = '';
+    res
+      .status(200)
+      .json({ message: 'Details updated successfully', updatedUser });
   } catch (err) {
-    res.status(500).json({ message: 'error occur' });
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
