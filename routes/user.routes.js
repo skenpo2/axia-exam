@@ -2,6 +2,7 @@ const express = require('express');
 const {
   createUser,
   loginUser,
+  updateAUser,
   deleteUser,
 } = require('../controllers/user.controllers');
 const routes = express.Router();
@@ -12,5 +13,6 @@ routes.get('/', (req, res) => {
 routes.post('/register', createUser);
 routes.post('/login', loginUser);
 routes.delete('/user', deleteUser);
+routes.put('/user', updateAUser);
 
 module.exports = routes;

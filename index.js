@@ -30,6 +30,7 @@ mongoose
 
 // user endpoints routes
 app.use(userRoute);
+app.use(postRoute);
 
 app.listen(PORT, () => {
   console.log(`App is Connected  at Port ${PORT}`);
