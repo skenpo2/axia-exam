@@ -6,14 +6,30 @@ const router = express.Router();
 // Create a post
 
 const createPost = async (req, res) => {
+  const { title, body, image } = req.body;
+
+  // Ensure a post has at least a title and body
+  if (!title || !body) {
+    return res
+      .status(400)
+      .json({ message: 'Please provide both title and body' });
+  }
+
   try {
-    const { title, body, image } = req.body;
-    const { id: creatorId } = req.cookie;
-    const newPost = new Post({ title, body, image, creatorId });
+    // cookie access
+    const { id: creatorId } = req.cookies;
+
+    const newPost = new Post({
+      title,
+      body,
+      image: image || 'no image',
+      creatorId,
+    });
+
     await newPost.save();
-    res.status(201).json({ message: 'post created successfully' });
+    res.status(201).json({ message: 'Post created successfully' });
   } catch (err) {
-    res.status(500).json({ message: 'error occur' });
+    res.status(500).json({ message: 'An error occurred', error: err.message });
   }
 };
 
@@ -31,7 +47,8 @@ const getAllPost = async (req, res) => {
 // Get a single post by Id
 const getSinglePost = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const { id } = req.params;
+    const post = await Post.findById(id);
     if (!post) return res.status(404).json({ error: 'Post not found' });
     res.json(post);
   } catch (err) {
@@ -42,14 +59,25 @@ const getSinglePost = async (req, res) => {
 // Update a post
 const updatePost = async (req, res) => {
   try {
-    const { post } = req.body;
+    const { id } = req.params;
+    // cookie access
+    const { id: creatorId } = req.cookies;
+    const { id: postId, ...body } = req.body;
+
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    if (post.creatorId.toString() !== creatorId) {
+      return res.status(403).json({ message: 'not allowed' });
+    }
+
     const updatedPost = await Post.findByIdAndUpdate(
-      req.params.id,
-      { ...post },
+      id,
+      { ...body },
       { new: true }
     );
-    if (!updatedPost) return res.status(404).json({ error: 'Post not found' });
-    res.json(updatedPost);
+    res.status(200).json(updatedPost);
   } catch (err) {
     res.status(500).json({ message: 'error occur' });
   }
@@ -58,9 +86,19 @@ const updatePost = async (req, res) => {
 // Delete a post
 const deletePost = async (req, res) => {
   try {
-    const deletedPost = await Post.findByIdAndDelete(req.params.id);
-    if (!deletedPost) return res.status(404).json({ error: 'Post not found' });
-    res.json({ message: 'Post deleted successfully' });
+    // cookie access
+    const { id: creatorId } = req.cookies;
+    const { id } = req.params;
+
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    if (post.creatorId.toString() !== creatorId) {
+      return res.status(403).json({ message: 'not allowed' });
+    }
+    await Post.findByIdAndDelete(id);
+    res.status(200).json({ message: 'Post deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'error occur' });
   }
